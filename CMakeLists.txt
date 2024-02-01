@@ -16,8 +16,13 @@ add_library(MyMod SHARED
     src/MyMod.h
 )
 
+# Add SDK and DX headers dependencies.
+find_package(directx-headers CONFIG REQUIRED)
+
 target_link_libraries(MyMod
     ZHMModSDK
+    Microsoft::DirectX-Guids
+    Microsoft::DirectX-Headers
 )
 
 install(TARGETS MyMod
