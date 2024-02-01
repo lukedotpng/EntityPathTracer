@@ -1,5 +1,7 @@
 {
     "name": "mymod",
     "version": "1.0.0",
-    "dependencies": []
+    "dependencies": [
+        "directx-headers"
+    ]
 }
