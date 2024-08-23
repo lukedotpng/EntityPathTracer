@@ -1,17 +1,18 @@
 # Entity Path Tracer 
 
 ## This is a mod to trace the path of items in Hitman WoA
-- Project made using the ZHM Mod SDK and the [ZHM Mod Generator](https://zhmmod.nofate.me/) 
+- Project made using the ZHM Mod SDK and the [ZHM Mod Generator](https://zhmmod.nofate.me/)
 
 ## Usage
 - This mod is designed for tracing the path of bomb launches.
-- To start tracking an item you must drop/place it on the ground, and then press `P`.
-    - The last item dropped/placed will be the one selected, given it is able to be tracked
+- To start tracking an item you must drop/place it on the ground.
+    - The last item dropped/placed that can be traced will take priority
     - Breaching charges are ignored, so if you drop it after the bomb you want to launch, dont worry!
-- A white box will appear around the item you are tracking as a confirmation.
-- To stop tracking an item, press `P` again.
-    - Dont worry if you accidently press `P` after the item has moved, as long as you dont drop/place another item, the traced path will be saved.
-- To clear the current traced path, press `O`. This will not affect what item you are currently tracking.
+- To toggle showing an items path, press `p` 
+  - A white box will appear around the item you are tracking as a confirmation.
+  - The items position is always logged, even if you dont press `p`, until another valid item is drop/placed
+- To clear the current traced path, press `o`. This will not affect what item you are currently tracking.
+  - When you have multiple paths logged, you can continue pressing `o` to remove them  
 - Customization settings available is the ZHM mod menu, which you can access by pressing the `~` key (`^` on QWERTZ layouts).
 
 ## Installation Instructions
