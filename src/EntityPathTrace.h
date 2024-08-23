@@ -23,17 +23,22 @@ private:
     DECLARE_PLUGIN_DETOUR(EntityPathTrace, void, OnReloadScene, ZEntitySceneContext* th, bool forReload);
 
 private:
-    bool m_isTracing = false;
+    bool m_showTraceLines = false;
+    bool m_saveAllTraces = false;
     ZInputAction m_selectTraceItemInputAction = "SelectTraceItem";
     ZInputAction m_clearCurrentTraceInputAction = "ClearCurrentTrace";
+    const char* m_showTraceLinesKey = "p";
+    const char* m_clearTraceKey = "o";
     ZEntityRef m_lastEntityCaptured = nullptr;
     ZHM5Item* m_currentTraceItem = nullptr;
     ZSpatialEntity* m_currentTraceItemSpatial = nullptr;
     ZHM5Action* m_currentTraceItemAction = nullptr;
     std::vector<SVector3> m_traceItemPositions;
+    std::vector<std::vector<SVector3>> m_allTracePositions;
     float32 m_tracePathSize = 0.05;
     SVector4 m_tracePathColor = SVector4(.13, .88, .13, 0);
     bool m_nameSelectedItemOnScreen = true;
 };
 
 DEFINE_ZHM_PLUGIN(EntityPathTrace)
+

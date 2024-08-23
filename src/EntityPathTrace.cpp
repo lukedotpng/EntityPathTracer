@@ -1,5 +1,4 @@
 #include "EntityPathTrace.h"
- #include "EntityPathTrace.h"
 
 #include <Logging.h>
 #include <Glacier/ZRender.h>
@@ -12,23 +11,24 @@
 #include <Glacier/ZEntity.h>
 #include <Glacier/ZMath.h>
 #include <Glacier/ZObject.h>
+#include <Glacier/ZModule.h>
 #include <Hooks.h>
 
 void EntityPathTrace::Init() {
     Hooks::ZInputAction_Digital->AddDetour(this, &EntityPathTrace::ZInputAction_Digital);
     Hooks::SignalOutputPin->AddDetour(this, &EntityPathTrace::PinOutput);
     Hooks::ZEntitySceneContext_LoadScene->AddDetour(this, &EntityPathTrace::OnLoadScene);
-    Hooks::ZEntitySceneContext_ClearScene->AddDetour(this, EntityPathTrace::OnReloadScene);
-
-
+    Hooks::ZEntitySceneContext_ClearScene->AddDetour(this, &EntityPathTrace::OnReloadScene);
 }
 
 void EntityPathTrace::OnEngineInitialized() {
     Logger::Info("EntityPathTrace has been initialized!");
 
-    const char* inputBinds = "EntityPathTraceBinds={SelectTraceItem=tap(kb,p);ClearCurrentTrace=tap(kb,o);};";
+    std::stringstream keybindStream;
+    keybindStream << "EntityPathTraceBinds={SelectTraceItem=tap(kb," << m_showTraceLinesKey << ");ClearCurrentTrace=tap(kb," << m_clearTraceKey << ");};";
+    std::string inputBinds = keybindStream.str();
 
-    if(ZInputActionManager::AddBindings(inputBinds)) {
+    if(ZInputActionManager::AddBindings(inputBinds.c_str())) {
         Logger::Debug("Added EntityPathTrace Keybinds!!");
     }
 
@@ -50,8 +50,10 @@ void EntityPathTrace::OnDrawMenu() {
     if(ImGui::BeginMenu("Item Tracer Settings")) {
         ImGui::SliderFloat("Path Size", &m_tracePathSize, 0, 2, "%.2f", ImGuiSliderFlags_None);
         ImGui::Checkbox("Show Item Name on Screen", &m_nameSelectedItemOnScreen);
+        ImGui::Checkbox("Save all traces lines", &m_saveAllTraces);
         ImGui::SetColorEditOptions(ImGuiColorEditFlags_AlphaBar);
         ImGui::ColorPicker4("Path color", color);
+
         ImGui::EndMenu();
 
         m_tracePathColor.x = color[0];
@@ -62,73 +64,34 @@ void EntityPathTrace::OnDrawMenu() {
 }
 void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
     if(Functions::ZInputAction_Digital->Call(&m_selectTraceItemInputAction, 1)) {
-        Logger::Debug("Pressed P");
-        if(m_isTracing) {
-            Logger::Debug("{} is no longer being traced", m_currentTraceItem->m_pItemConfigDescriptor->m_sTitle);
-            m_isTracing = false;
-            // m_currentTraceItem = nullptr;
-            m_currentTraceItemAction = nullptr;
-            m_currentTraceItemSpatial = nullptr;
-            // m_traceItemPositions.clear();
-        } else if(m_lastEntityCaptured != nullptr) {
-            Logger::Debug("Starting a new capture!");
-            if(m_currentTraceItem) {
-                if(m_lastEntityCaptured.QueryInterface<ZHM5Item>()->m_pItemConfigDescriptor->m_RepositoryId != m_currentTraceItem->m_pItemConfigDescriptor->m_RepositoryId) {
-                    m_traceItemPositions.clear();
-                    m_currentTraceItem = m_lastEntityCaptured.QueryInterface<ZHM5Item>();
-                }
-            } else {
-                m_traceItemPositions.clear();
-                m_currentTraceItem = m_lastEntityCaptured.QueryInterface<ZHM5Item>();
-            }
-
-            if(!m_currentTraceItem) {
-                Logger::Debug("No ZHM5Item on entity");
-                return;
-            }
-            m_currentTraceItemSpatial = m_currentTraceItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>();
-            if(!m_currentTraceItemSpatial) {
-                Logger::Debug("No spatial on item");
-                return;
-            }
-            Logger::Debug("Checking for matching entity on map!");
-            const ZHM5ActionManager* actionManager = Globals::HM5ActionManager;
-            m_currentTraceItemAction = nullptr;
-            for (const auto currAction : actionManager->m_Actions) {
-                if(currAction && currAction->m_eActionType == EActionType::AT_PICKUP) {
-                   if(const ZHM5Item* currItem = currAction->m_Object.QueryInterface<ZHM5Item>()) {
-                       if(currItem->m_pItemConfigDescriptor->m_RepositoryId == m_currentTraceItem->m_pItemConfigDescriptor->m_RepositoryId) {
-                           Logger::Debug("Found matching entity!");
-                           m_currentTraceItemAction = currAction;
-                           break;
-                       }
-                   }
-                }
-            }
-
-            if(m_currentTraceItemAction == nullptr) {
-                Logger::Debug("Item had no cooresponding item on map");
-                return;
-            }
-
-            Logger::Debug("{} is now being traced", m_currentTraceItem->m_pItemConfigDescriptor->m_sTitle);
-            m_isTracing = true;
+        if(m_showTraceLines) {
+            Logger::Debug("Trace lines are now hidden");
+            m_showTraceLines = false;
+        } else if(m_currentTraceItem) {
+            Logger::Debug("Trace lines are now shown");
+            m_showTraceLines = true;
         }
     }
 
     if(Functions::ZInputAction_Digital->Call(&m_clearCurrentTraceInputAction, 1)) {
-        m_traceItemPositions.clear();
+        if(!m_allTracePositions.empty() && m_traceItemPositions.size() <= 2) {
+            Logger::Debug("Clearing past trace line!");
+            m_allTracePositions.pop_back();
+        } else {
+            Logger::Debug("Clearing current trace line!");
+            m_traceItemPositions.clear();
+        }
     }
 }
 
 void EntityPathTrace::OnDraw3D(IRenderer *p_Renderer) {
-    if(!m_currentTraceItem || !m_currentTraceItemSpatial || !m_currentTraceItemAction || !m_isTracing) {
+    if(!m_currentTraceItemSpatial || !m_currentTraceItemAction || !m_currentTraceItem) {
         return;
     }
 
     const SVector3 traceItemPosition = m_currentTraceItemSpatial->m_mTransform.Trans;
 
-    if(m_nameSelectedItemOnScreen) {
+    if(m_nameSelectedItemOnScreen && m_showTraceLines) {
         const ImGuiIO& guiIO = ImGui::GetIO();
         const float32 screenWidth = guiIO.DisplaySize.x * guiIO.DisplayFramebufferScale.x;
 
@@ -142,7 +105,7 @@ void EntityPathTrace::OnDraw3D(IRenderer *p_Renderer) {
             );
     }
 
-    if(m_currentTraceItemAction->m_bVisible) {
+    if(m_currentTraceItemAction->m_bVisible && m_showTraceLines) {
         p_Renderer->DrawBox3D(
            SVector3(traceItemPosition.x + .1f, traceItemPosition.y + .1f, traceItemPosition.z + .1f),
            SVector3(traceItemPosition.x - .1f, traceItemPosition.y - .1f, traceItemPosition.z -.1f),
@@ -152,27 +115,41 @@ void EntityPathTrace::OnDraw3D(IRenderer *p_Renderer) {
 
     if(m_traceItemPositions.size() <= 1) {
         m_traceItemPositions.push_back(traceItemPosition);
-        Logger::Debug("Vector is too small");
         return;
     }
+
     if(traceItemPosition.x == m_traceItemPositions.back().x && traceItemPosition.y == m_traceItemPositions.back().y && traceItemPosition.z == m_traceItemPositions.back().z) {
         // Item is not moving
     } else if(m_currentTraceItemAction->m_bVisible) {
         m_traceItemPositions.push_back(traceItemPosition);
     }
 
-    for(int i = 0; i < m_traceItemPositions.size() - 1; i++) {
-        if(m_traceItemPositions.empty()) {
-            Logger::Debug("Rug was pulled D:");
-            break;
+    if(m_showTraceLines) {
+        for(int i = 0; i < m_traceItemPositions.size() - 1; i++) {
+            p_Renderer->DrawQuad3D(
+                Vector3Offset(m_traceItemPositions[i], -m_tracePathSize), m_tracePathColor,
+                Vector3Offset(m_traceItemPositions[i], m_tracePathSize), m_tracePathColor,
+                Vector3Offset(m_traceItemPositions[i + 1], m_tracePathSize), m_tracePathColor,
+                Vector3Offset(m_traceItemPositions[i + 1], -m_tracePathSize), m_tracePathColor
+                );
         }
+    }
+    // Print past traces
+    if(m_saveAllTraces && m_showTraceLines) {
+        for(int j = 0; j < m_allTracePositions.size(); j++) {
+            for(int i = 0; i < m_allTracePositions[j].size() - 1; i++) {
+                if(m_allTracePositions[j].empty()) {
+                    break;
+                }
 
-        p_Renderer->DrawQuad3D(
-            Vector3Offset(m_traceItemPositions[i], -m_tracePathSize), m_tracePathColor,
-            Vector3Offset(m_traceItemPositions[i], m_tracePathSize), m_tracePathColor,
-            Vector3Offset(m_traceItemPositions[i + 1], m_tracePathSize), m_tracePathColor,
-            Vector3Offset(m_traceItemPositions[i + 1], -m_tracePathSize), m_tracePathColor
-            );
+                p_Renderer->DrawQuad3D(
+                    Vector3Offset(m_allTracePositions[j][i], -m_tracePathSize), m_tracePathColor,
+                    Vector3Offset(m_allTracePositions[j][i], m_tracePathSize), m_tracePathColor,
+                    Vector3Offset(m_allTracePositions[j][i + 1], m_tracePathSize), m_tracePathColor,
+                    Vector3Offset(m_allTracePositions[j][i + 1], -m_tracePathSize), m_tracePathColor
+                    );
+            }
+        }
     }
 }
 
@@ -194,6 +171,8 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
         return {HookAction::Continue()};
     }
 
+    m_lastEntityCaptured = nullptr;
+
     if(const auto traceableItem = entity.QueryInterface<ZHM5Item>()) {
         if(traceableItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>()) {
             if(!traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("Charge")) {
@@ -202,25 +181,73 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
         }
     }
 
+    if(m_lastEntityCaptured == nullptr) {
+        return { HookAction::Continue() };
+    }
+
+    if(m_currentTraceItem) {
+        if(m_lastEntityCaptured.QueryInterface<ZHM5Item>()->m_pItemConfigDescriptor->m_RepositoryId != m_currentTraceItem->m_pItemConfigDescriptor->m_RepositoryId) {
+            m_allTracePositions.push_back(m_traceItemPositions);
+            m_traceItemPositions.clear();
+            m_currentTraceItem = m_lastEntityCaptured.QueryInterface<ZHM5Item>();
+        }
+    } else {
+        m_allTracePositions.push_back(m_traceItemPositions);
+        m_traceItemPositions.clear();
+        m_currentTraceItem = m_lastEntityCaptured.QueryInterface<ZHM5Item>();
+    }
+
+    if(!m_currentTraceItem) {
+        Logger::Debug("No ZHM5Item on entity");
+        return { HookAction::Continue() };
+    }
+    m_currentTraceItemSpatial = m_currentTraceItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>();
+    if(!m_currentTraceItemSpatial) {
+        Logger::Debug("No spatial on item");
+        return { HookAction::Continue() };
+    }
+    Logger::Debug("Checking for matching entity on map!");
+    const ZHM5ActionManager* actionManager = Globals::HM5ActionManager;
+    m_currentTraceItemAction = nullptr;
+
+    for (const auto currAction : actionManager->m_Actions) {
+        if(currAction && currAction->m_eActionType == EActionType::AT_PICKUP) {
+           if(const ZHM5Item* currItem = currAction->m_Object.QueryInterface<ZHM5Item>()) {
+               if(currItem->m_pItemConfigDescriptor->m_RepositoryId == m_currentTraceItem->m_pItemConfigDescriptor->m_RepositoryId) {
+                   Logger::Debug("Found matching entity!");
+                   m_currentTraceItemAction = currAction;
+                   break;
+               }
+           }
+        }
+    }
+
+    if(m_currentTraceItemAction == nullptr) {
+        Logger::Debug("Item had no cooresponding item on map");
+        return { HookAction::Continue() };
+    }
     return { HookAction::Continue() };
 }
 
 DEFINE_PLUGIN_DETOUR(EntityPathTrace, void, OnLoadScene, ZEntitySceneContext* th, ZSceneData& p_sceneData) {
-    m_isTracing = false;
+    m_showTraceLines = false;
     m_lastEntityCaptured = nullptr;
     m_currentTraceItem = nullptr;
     m_traceItemPositions.clear();
+    m_allTracePositions.clear();
     Logger::Debug("OnLoadScene");
     return { HookAction::Continue() };
 }
 
 DEFINE_PLUGIN_DETOUR(EntityPathTrace, void, OnReloadScene, ZEntitySceneContext* th, bool forReload) {
-    m_isTracing = false;
+    m_showTraceLines = false;
     m_currentTraceItem = nullptr;
     m_lastEntityCaptured = nullptr;
     m_traceItemPositions.clear();
+    m_allTracePositions.clear();
     Logger::Debug("OnReloadScene");
     return { HookAction::Continue() };
 }
 
 DECLARE_ZHM_PLUGIN(EntityPathTrace);
+
