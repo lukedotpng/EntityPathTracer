@@ -103,7 +103,7 @@ void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
     }
 
     if(m_currentTraceItemAction) {
-        if(m_currentTraceItemAction->m_bVisible) {
+        if(m_currentTraceItemAction->m_bVisible || m_isTaser) {
             m_traceItemPositions.push_back(traceItemPosition);
         }
     } else {
@@ -190,7 +190,7 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
         Logger::Debug("\tZHM5Item found!");
         if(traceableItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>()) {
             Logger::Debug("\tZSpatialEntity found!");
-            if(traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("Charge")) {
+            if(traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("Breach")) {
                 Logger::Debug("\tBreaching charged dropped, moving on :P");
                 return {HookAction::Continue()};
             }
@@ -214,6 +214,13 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
 
                 if(currItem->m_pItemConfigDescriptor->m_RepositoryId == traceableItem->m_pItemConfigDescriptor->m_RepositoryId) {
                     Logger::Debug("\tFound matching entity!");
+
+                    if(currItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("Taser") || currItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("EMP")) {
+                        m_isTaser = true;
+                    } else {
+                        m_isTaser = false;
+                    }
+
 
                     if(m_currentTraceItem == nullptr) {
                         m_currentTraceItem = traceableItem;

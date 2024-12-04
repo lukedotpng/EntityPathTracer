@@ -25,6 +25,7 @@ private:
 private:
     bool m_showTraceLines = false;
     bool m_saveAllTraces = false;
+    bool m_isTaser = false;
     ZInputAction m_selectTraceItemInputAction = "SelectTraceItem";
     ZInputAction m_clearCurrentTraceInputAction = "ClearCurrentTrace";
     ZHM5Item* m_currentTraceItem = nullptr;
