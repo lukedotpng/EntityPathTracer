@@ -16,6 +16,9 @@ add_library(MyMod SHARED
     src/MyMod.h
 )
 
+# Set UTF-8 flag.
+set_target_properties(MyMod PROPERTIES COMPILE_FLAGS "/utf-8")
+
 # Add SDK and DX headers dependencies.
 find_package(directx-headers CONFIG REQUIRED)
 
