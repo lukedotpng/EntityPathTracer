@@ -13,6 +13,19 @@
 #include <Glacier/ZModule.h>
 #include <Hooks.h>
 
+EntityPathTrace::EntityPathTrace() :
+    m_showTraceLines(false),
+    m_useDepth(false),
+    m_saveAllTraces(false),
+    m_isTaser(false),
+    m_selectTraceItemInputAction("SelectTraceItem"),
+    m_clearCurrentTraceInputAction("ClearCurrentTrace"),
+    m_currentTraceItem(nullptr),
+    m_currentTraceItemAction(nullptr),
+    m_tracePathSize(0.05),
+    m_tracePathColor(SVector4(0, 1, 0, .5f))
+{}
+
 void EntityPathTrace::Init() {
     Hooks::ZInputAction_Digital->AddDetour(this, &EntityPathTrace::ZInputAction_Digital);
     Hooks::SignalOutputPin->AddDetour(this, &EntityPathTrace::PinOutput);
@@ -129,7 +142,7 @@ void EntityPathTrace::OnDepthDraw3D(IRenderer *p_Renderer) {
 }
 
 void EntityPathTrace::DrawTraceLines(IRenderer *p_Renderer) {
-    if(!m_currentTraceItem || !m_showTraceLines) {
+    if(m_currentTraceItem == nullptr || !m_showTraceLines) {
         return;
     }
 
@@ -202,8 +215,13 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
         Logger::Debug("\tZHM5Item found!");
         if(traceableItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>()) {
             Logger::Debug("\tZSpatialEntity found!");
+            Logger::Debug("{}", traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView());
             if(traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("Breach")) {
                 Logger::Debug("\tBreaching charged dropped, moving on :P");
+                return {HookAction::Continue()};
+            }
+            if(traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView() == "Explosive Watch Battery") {
+                Logger::Debug("\tSean Rose watch battery placed, moving on :P");
                 return {HookAction::Continue()};
             }
         } else {

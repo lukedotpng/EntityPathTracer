@@ -11,6 +11,7 @@ class EntityPathTrace : public IPluginInterface {
 public:
     void Init() override;
     void OnEngineInitialized() override;
+    EntityPathTrace();
     ~EntityPathTrace() override;
     void OnDrawMenu() override;
     void OnDraw3D(IRenderer *p_Renderer) override;
@@ -26,18 +27,18 @@ private:
     DECLARE_PLUGIN_DETOUR(EntityPathTrace, void, OnReloadScene, ZEntitySceneContext* th, bool forReload);
 
 private:
-    bool m_showTraceLines = false;
-    bool m_useDepth = true;
-    bool m_saveAllTraces = false;
-    bool m_isTaser = false;
-    ZInputAction m_selectTraceItemInputAction = "SelectTraceItem";
-    ZInputAction m_clearCurrentTraceInputAction = "ClearCurrentTrace";
-    ZHM5Item* m_currentTraceItem = nullptr;
-    ZHM5Action* m_currentTraceItemAction = nullptr;
+    bool m_showTraceLines;
+    bool m_useDepth;
+    bool m_saveAllTraces;
+    bool m_isTaser;
+    ZInputAction m_selectTraceItemInputAction;
+    ZInputAction m_clearCurrentTraceInputAction;
+    ZHM5Item* m_currentTraceItem;
+    ZHM5Action* m_currentTraceItemAction;
     std::vector<SVector3> m_traceItemPositions;
     std::vector<std::vector<SVector3>> m_allTracePositions;
-    float32 m_tracePathSize = 0.05;
-    SVector4 m_tracePathColor = SVector4(0, 1, 0, .5f);
+    float32 m_tracePathSize;
+    SVector4 m_tracePathColor;
 };
 
 DEFINE_ZHM_PLUGIN(EntityPathTrace)
