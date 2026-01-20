@@ -2,6 +2,7 @@
 
 #include <Logging.h>
 #include <Globals.h>
+#include <Functions.h>
 #include <Glacier/ZInputActionManager.h>
 #include <Glacier/ZGameLoopManager.h>
 #include <Glacier/ZScene.h>
@@ -104,6 +105,11 @@ void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
     }
 
     const auto currentItemSpatial = m_currentTraceItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>();
+    if (!currentItemSpatial) {
+        m_currentTraceItem = nullptr;
+        m_currentTraceItemAction = nullptr;
+        return;
+    }
     const SVector3 traceItemPosition = currentItemSpatial->m_mTransform.Trans;
 
     if(m_traceItemPositions.size() <= 1) {
@@ -220,10 +226,6 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
                 Logger::Debug("\tBreaching charged dropped, moving on :P");
                 return {HookAction::Continue()};
             }
-            if(traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView() == "Explosive Watch Battery") {
-                Logger::Debug("\tSean Rose watch battery placed, moving on :P");
-                return {HookAction::Continue()};
-            }
         } else {
             Logger::Debug("\tNo ZSpatialEntity found");
             return {HookAction::Continue()};
@@ -251,18 +253,13 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
                         m_isTaser = false;
                     }
 
-
-                    if(m_currentTraceItem == nullptr) {
-                        m_currentTraceItem = traceableItem;
-                        m_currentTraceItemAction = currAction;
-                        return { HookAction::Continue() };
+                    if (m_currentTraceItem != nullptr) {
+                        if(traceableItem->m_pItemConfigDescriptor->m_sTitle == m_currentTraceItem->m_pItemConfigDescriptor->m_sTitle) {
+                            return { HookAction::Continue() };
+                        }
                     }
 
-                    if(traceableItem->m_pItemConfigDescriptor->m_sTitle == m_currentTraceItem->m_pItemConfigDescriptor->m_sTitle) {
-                        return { HookAction::Continue() };
-                    }
-
-                    if (m_saveAllTraces) {
+                    if (m_saveAllTraces && m_traceItemPositions.size() > 0) {
                         m_allTracePositions.push_back(m_traceItemPositions);
                     }
                     m_traceItemPositions.clear();
