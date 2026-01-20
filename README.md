@@ -1,4 +1,6 @@
-# Entity Path Tracer 
+<p align="center">
+    <img height="100" object-fit="cover" alt="Entity Path Tracer" src="https://github.com/user-attachments/assets/9a489ae5-3bf3-42a6-9477-a373799d28af" />
+</p>
 
 ## This is a mod to trace the path of items in Hitman WoA
 - Project made using the ZHM Mod SDK and the [ZHM Mod Generator](https://zhmmod.nofate.me/)
