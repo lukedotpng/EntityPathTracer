@@ -1,6 +1,7 @@
 #include "EntityPathTrace.h"
 
 #include <Logging.h>
+#include <IconsMaterialDesign.h>
 #include <Globals.h>
 #include <Functions.h>
 #include <Glacier/ZInputActionManager.h>
@@ -15,6 +16,7 @@
 #include <Hooks.h>
 
 EntityPathTrace::EntityPathTrace() :
+    m_showSettingsWindow(false),
     m_showTraceLines(false),
     m_useDepth(false),
     m_saveAllTraces(false),
@@ -55,25 +57,36 @@ EntityPathTrace::~EntityPathTrace() {
 }
 
 void EntityPathTrace::OnDrawMenu() {
-    // Toggle our message when the user presses our button.
-    float color[] = {m_tracePathColor.x, m_tracePathColor.y, m_tracePathColor.z, m_tracePathColor.w};
-
-    if(ImGui::BeginMenu("Item Tracer Settings")) {
-        ImGui::Checkbox("Enable tracing", &m_showTraceLines);
-        ImGui::Checkbox("Use depth rendering", &m_useDepth);
-        ImGui::Checkbox("Save all traces lines (May cause crashes)", &m_saveAllTraces);
-        ImGui::SliderFloat("Path Size", &m_tracePathSize, 0, 2, "%.2f", ImGuiSliderFlags_None);
-        ImGui::SetColorEditOptions(ImGuiColorEditFlags_AlphaBar);
-        ImGui::ColorPicker4("Path color", color);
-
-        ImGui::EndMenu();
-
-        m_tracePathColor.x = color[0];
-        m_tracePathColor.y = color[1];
-        m_tracePathColor.z = color[2];
-        m_tracePathColor.w = color[3];
+    if (ImGui::Button(ICON_MD_AIRLINE_STOPS " ITEM TRACER")) {
+        m_showSettingsWindow = !m_showSettingsWindow;
     }
 }
+
+void EntityPathTrace::OnDrawUI(bool p_HasFocus) {
+    if (m_showSettingsWindow && p_HasFocus) {
+        // Toggle our message when the user presses our button.
+        float color[] = {m_tracePathColor.x, m_tracePathColor.y, m_tracePathColor.z, m_tracePathColor.w};
+
+        const auto s_IsWindowExpanded = ImGui::Begin("Item Tracer Settings", &m_showSettingsWindow);
+
+        if(s_IsWindowExpanded) {
+            ImGui::Checkbox("Enable tracing", &m_showTraceLines);
+            ImGui::Checkbox("Use depth rendering", &m_useDepth);
+            ImGui::Checkbox("Save all traces lines (May cause crashes)", &m_saveAllTraces);
+            ImGui::SliderFloat("Path Size", &m_tracePathSize, 0, 2, "%.2f", ImGuiSliderFlags_None);
+            ImGui::SetColorEditOptions(ImGuiColorEditFlags_AlphaBar);
+            ImGui::ColorPicker4("Path color", color);
+
+            m_tracePathColor.x = color[0];
+            m_tracePathColor.y = color[1];
+            m_tracePathColor.z = color[2];
+            m_tracePathColor.w = color[3];
+        }
+
+        ImGui::End();
+    }
+}
+
 void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
     if(Functions::ZInputAction_Digital->Call(&m_selectTraceItemInputAction, 1)) {
         if(m_showTraceLines) {

@@ -14,6 +14,7 @@ public:
     EntityPathTrace();
     ~EntityPathTrace() override;
     void OnDrawMenu() override;
+    void OnDrawUI(bool p_HasFocus) override;
     void OnDraw3D(IRenderer *p_Renderer) override;
     void OnDepthDraw3D(IRenderer *p_Renderer) override;
 private:
@@ -27,6 +28,7 @@ private:
     DECLARE_PLUGIN_DETOUR(EntityPathTrace, void, OnReloadScene, ZEntitySceneContext* th, bool forReload);
 
 private:
+    bool m_showSettingsWindow;
     bool m_showTraceLines;
     bool m_useDepth;
     bool m_saveAllTraces;
