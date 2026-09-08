@@ -18,7 +18,7 @@
 EntityPathTrace::EntityPathTrace() :
     m_showSettingsWindow(false),
     m_showTraceLines(false),
-    m_useDepth(false),
+    m_useDepth(true),
     m_saveAllTraces(false),
     m_isTaser(false),
     m_selectTraceItemInputAction("SelectTraceItem"),
@@ -37,6 +37,14 @@ void EntityPathTrace::Init() {
 }
 
 void EntityPathTrace::OnEngineInitialized() {
+    m_useDepth = GetSettingBool("preferences", "use_depth", true);
+    m_tracePathSize = GetSettingDouble("preferences", "size", 0.05);
+    const auto s_pathColorRed = GetSettingDouble("preferences", "color_red", 0);
+    const auto s_pathColorGreen = GetSettingDouble("preferences", "color_green", 1);
+    const auto s_pathColorBlue = GetSettingDouble("preferences", "color_blue", 0);
+    const auto s_pathColorAlpha = GetSettingDouble("preferences", "color_alpha", 0.5);
+    m_tracePathColor = SVector4(s_pathColorRed, s_pathColorGreen, s_pathColorBlue, s_pathColorAlpha);
+
     Logger::Info("EntityPathTrace has been initialized!");
 
     std::string inputBinds = "EntityPathTraceBinds={SelectTraceItem=tap(kb,p);ClearCurrentTrace=tap(kb,o);};";
@@ -71,11 +79,20 @@ void EntityPathTrace::OnDrawUI(bool p_HasFocus) {
 
         if(s_IsWindowExpanded) {
             ImGui::Checkbox("Enable tracing", &m_showTraceLines);
-            ImGui::Checkbox("Use depth rendering", &m_useDepth);
+            if (ImGui::Checkbox("Use depth rendering", &m_useDepth)) {
+                SetSettingBool("preferences", "use_depth", m_useDepth);
+            }
             ImGui::Checkbox("Save all traces lines (May cause crashes)", &m_saveAllTraces);
-            ImGui::SliderFloat("Path Size", &m_tracePathSize, 0, 2, "%.2f", ImGuiSliderFlags_None);
+            if (ImGui::SliderFloat("Path Size", &m_tracePathSize, 0, 2, "%.2f", ImGuiSliderFlags_None)) {
+                SetSettingDouble("preferences", "size", m_tracePathSize);
+            }
             ImGui::SetColorEditOptions(ImGuiColorEditFlags_AlphaBar);
-            ImGui::ColorPicker4("Path color", color);
+            if (ImGui::ColorPicker4("Path color", color)) {
+                SetSettingDouble("preferences", "color_red", color[0]);
+                SetSettingDouble("preferences", "color_green", color[1]);
+                SetSettingDouble("preferences", "color_blue", color[2]);
+                SetSettingDouble("preferences", "color_alpha", color[3]);
+            }
 
             m_tracePathColor.x = color[0];
             m_tracePathColor.y = color[1];
