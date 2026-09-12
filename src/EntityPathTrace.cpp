@@ -157,7 +157,7 @@ void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
     }
 
     if(m_currentTraceItemAction) {
-        if(m_currentTraceItemAction->m_bVisible || m_isTaser) {
+        if(m_currentTraceItem->m_rGeomentity.m_pInterfaceRef->m_bVisible || m_isTaser) {
             m_traceItemPositions.push_back(traceItemPosition);
         }
     } else {
