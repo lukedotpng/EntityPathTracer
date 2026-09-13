@@ -18,7 +18,6 @@
 EntityPathTrace::EntityPathTrace() :
     m_showSettingsWindow(false),
     m_showTraceLines(false),
-    m_useDepth(true),
     m_saveAllTraces(false),
     m_isTaser(false),
     m_selectTraceItemInputAction("SelectTraceItem"),
@@ -37,7 +36,6 @@ void EntityPathTrace::Init() {
 }
 
 void EntityPathTrace::OnEngineInitialized() {
-    m_useDepth = GetSettingBool("preferences", "use_depth", true);
     m_tracePathSize = GetSettingDouble("preferences", "size", 0.05);
     const auto s_pathColorRed = GetSettingDouble("preferences", "color_red", 0);
     const auto s_pathColorGreen = GetSettingDouble("preferences", "color_green", 1);
@@ -79,9 +77,6 @@ void EntityPathTrace::OnDrawUI(bool p_HasFocus) {
 
         if(s_IsWindowExpanded) {
             ImGui::Checkbox("Enable tracing", &m_showTraceLines);
-            if (ImGui::Checkbox("Use depth rendering", &m_useDepth)) {
-                SetSettingBool("preferences", "use_depth", m_useDepth);
-            }
             ImGui::Checkbox("Save all traces lines (May cause crashes)", &m_saveAllTraces);
             if (ImGui::SliderFloat("Path Size", &m_tracePathSize, 0, 2, "%.2f", ImGuiSliderFlags_None)) {
                 SetSettingDouble("preferences", "size", m_tracePathSize);
@@ -134,7 +129,7 @@ void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
         return;
     }
 
-    const auto currentItemSpatial = m_currentTraceItem->m_rPhysicsAccessor.m_entityRef.QueryInterface<ZSpatialEntity>();
+    const auto currentItemSpatial = m_currentTraceItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>();
     if (!currentItemSpatial) {
         m_currentTraceItem = nullptr;
         m_currentTraceItemAction = nullptr;
@@ -157,7 +152,7 @@ void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
     }
 
     if(m_currentTraceItemAction) {
-        if(m_currentTraceItem->m_rGeomentity.m_pInterfaceRef->m_bVisible || m_isTaser) {
+        if( m_currentTraceItemAction->m_bVisible || m_currentTraceItem->m_rGeomentity.m_ref.GetProperty<bool>("m_bVisible").Get() || m_isTaser) {
             m_traceItemPositions.push_back(traceItemPosition);
         }
     } else {
@@ -166,15 +161,7 @@ void EntityPathTrace::OnFrameUpdate(const SGameUpdateEvent &p_UpdateEvent) {
 }
 
 void EntityPathTrace::OnDraw3D(IRenderer *p_Renderer) {
-    if (!m_useDepth) {
-        DrawTraceLines(p_Renderer);
-    }
-}
-
-void EntityPathTrace::OnDepthDraw3D(IRenderer *p_Renderer) {
-    if (m_useDepth) {
-        DrawTraceLines(p_Renderer);
-    }
+    DrawTraceLines(p_Renderer);
 }
 
 void EntityPathTrace::DrawTraceLines(IRenderer *p_Renderer) {
@@ -182,12 +169,12 @@ void EntityPathTrace::DrawTraceLines(IRenderer *p_Renderer) {
         return;
     }
 
-    const auto currentItemSpatial = m_currentTraceItem->m_rPhysicsAccessor.m_entityRef.QueryInterface<ZSpatialEntity>();
+    const auto currentItemSpatial = m_currentTraceItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>();
 
     p_Renderer->DrawOBB3D(
        SVector3(-.1f, -.1f, -.1f),
        SVector3(.1f, .1f, .1f),
-       currentItemSpatial->GetObjectToWorldMatrix(),
+       currentItemSpatial->GetWorldMatrix(),
        SVector4(1, 1, 1, .5f)
        );
 
@@ -249,7 +236,7 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
 
     if(traceableItem) {
         Logger::Debug("\tZHM5Item found!");
-        if(traceableItem->m_rPhysicsAccessor.m_entityRef.QueryInterface<ZSpatialEntity>()) {
+        if(traceableItem->m_rPhysicsAccessor.m_ref.QueryInterface<ZSpatialEntity>()) {
             Logger::Debug("\tZSpatialEntity found!");
             Logger::Debug("{}", traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView());
             if(traceableItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("Breach")) {
@@ -274,7 +261,7 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
                     return { HookAction::Continue() };
                 }
 
-                if(currItem->m_pItemConfigDescriptor->m_ItemID == traceableItem->m_pItemConfigDescriptor->m_ItemID) {
+                if(currItem->m_pItemConfigDescriptor->m_RepositoryId == traceableItem->m_pItemConfigDescriptor->m_RepositoryId) {
                     Logger::Debug("\tFound matching entity!");
 
                     if(currItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("Taser") || currItem->m_pItemConfigDescriptor->m_sTitle.ToStringView().contains("EMP")) {
@@ -306,7 +293,7 @@ DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32
     return { HookAction::Continue() };
 }
 
-DEFINE_PLUGIN_DETOUR(EntityPathTrace, bool, OnLoadScene, ZEntitySceneContext* th, SSceneInitParameters&) {
+DEFINE_PLUGIN_DETOUR(EntityPathTrace, void, OnLoadScene, ZEntitySceneContext* th, ZSceneData&) {
     m_showTraceLines = false;
     m_currentTraceItem = nullptr;
     m_currentTraceItemAction = nullptr;

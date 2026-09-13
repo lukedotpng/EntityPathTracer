@@ -16,7 +16,6 @@ public:
     void OnDrawMenu() override;
     void OnDrawUI(bool p_HasFocus) override;
     void OnDraw3D(IRenderer *p_Renderer) override;
-    void OnDepthDraw3D(IRenderer *p_Renderer) override;
 private:
     void OnFrameUpdate(const SGameUpdateEvent& p_UpdateEvent);
     void DrawTraceLines(IRenderer *p_Renderer);
@@ -24,13 +23,12 @@ private:
 
     DECLARE_PLUGIN_DETOUR(EntityPathTrace, bool, ZInputAction_Digital, ZInputAction* th, int a2);
     DECLARE_PLUGIN_DETOUR(EntityPathTrace, bool, PinOutput, ZEntityRef entity, uint32_t pinId, const ZObjectRef& data);
-    DECLARE_PLUGIN_DETOUR(EntityPathTrace, bool, OnLoadScene, ZEntitySceneContext*, SSceneInitParameters&);
+    DECLARE_PLUGIN_DETOUR(EntityPathTrace, void, OnLoadScene, ZEntitySceneContext*, ZSceneData&);
     DECLARE_PLUGIN_DETOUR(EntityPathTrace, void, OnReloadScene, ZEntitySceneContext* th, bool forReload);
 
 private:
     bool m_showSettingsWindow;
     bool m_showTraceLines;
-    bool m_useDepth;
     bool m_saveAllTraces;
     bool m_isTaser;
     ZInputAction m_selectTraceItemInputAction;
